@@ -1,0 +1,54 @@
+<div class="ram-settings-machine-item">
+
+  <che-list-item flex>
+
+    <div flex="100"
+         layout="row"
+         layout-align="start stretch"
+         class="che-list-item-row">
+
+      <!-- Icon -->
+      <div layout="column" layout-align="center start">
+        <div layout="column" layout-align="center center"
+             class="ram-settings-machine-item-icon">
+          <div class="chefont cheico-stacks"></div>
+        </div>
+      </div>
+
+      <div flex layout="row">
+        <!-- Name -->
+        <div flex layout="column" layout-align="center start">
+          <span class="che-list-item-name ram-settings-machine-item-item-name">{{ramSettingsMachineItemController.machineName}}</span>
+        </div>
+
+        <!-- Description -->
+        <div flex layout="column" layout-align="center start">
+          <span class="che-list-item-name ram-settings-machine-item-secondary-color">{{ramSettingsMachineItemController.machineImage}}</span>
+        </div>
+      </div>
+
+      <!-- RAM limit -->
+      <div flex="30" layout="column" layout-align="center start">
+        <ng-form name="ramAmountForm">
+          <che-number-spinner che-form="ramAmountForm"
+                              che-name="machineName"
+                              che-step="0.5"
+                              che-tofixed="1"
+                              che-minvalue="1"
+                              che-maxvalue="100"
+                              che-unit="GB"
+                              ng-model="ramSettingsMachineItemController.machineMemoryLimit"
+                              ng-change="ramSettingsMachineItemController.onRamChanged(value)"
+                              required>
+            <div ng-message="required">A value is required.</div>
+            <div ng-message="min">The value has to be greater than 0.</div>
+            <div ng-message="max">The value has to be less than or equal to 100.</div>
+          </che-number-spinner>
+        </ng-form>
+      </div>
+
+    </div>
+
+  </che-list-item>
+
+</div>
