@@ -1,0 +1,16 @@
+<div class="template-selector">
+
+  <!-- Templates list -->
+  <che-list class="templates-list">
+
+    <template-selector-item ng-repeat="template in templateSelectorController.filteredTemplates"
+                            template="template"
+                            on-template-click="templateSelectorController.onTemplateClicked(templateName, isChecked)"></template-selector-item>
+
+    <div ng-show="templateSelectorController.filteredTemplates.length === 0">
+      No matching sample.
+    </div>
+
+  </che-list>
+
+</div>
