@@ -1,0 +1,5 @@
+{
+  "id": "org.eclipse.che.git.ssh",
+  "name": "Git-SSH",
+  "description": "Git SSH keys injector"
+}
