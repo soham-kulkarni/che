@@ -104,6 +104,10 @@ export class StackSelectorController {
    */
   onStackSelect: (data: {stackId: string}) => void;
 
+  private selectedTags: Array<string> = [];
+  private allStackTags: Array<string> = [];
+  private filteredStackIds: Array<string> = [];
+
   /**
    * Default constructor that is using resource injection
    * @ngInject for Dependency injection
@@ -131,7 +135,46 @@ export class StackSelectorController {
       this.updateMachines();
       this.buildStacksListsByScope();
       this.buildFilteredList();
+      this.onTagsChanges();
     });
+  }
+
+  /**
+   * Update filtered stack keys depends on tags.
+   * @param tags {Array<string>}
+   */
+  onTagsChanges(tags?: Array<string>): void {
+    if (!angular.isArray(tags) || !tags.length) {
+      this.filteredStackIds = this.stacksFiltered.map((stack: che.IStack) => stack.id);
+      if (this.stacksFiltered.length) {
+        this.selectedStackId = this.stacksFiltered[0].id;
+      }
+      this._updateTags();
+      return;
+    }
+
+    this.filteredStackIds = this.stacksFiltered.filter((stack: che.IStack) => {
+      let stackTags = stack.tags.map((tag: string) => tag.toLowerCase());
+      return tags.every((tag: string) => {
+        return stackTags.indexOf(tag.toLowerCase()) !== -1;
+      });
+    }).map((stack: che.IStack) => stack.id);
+    this.selectedStackId = this.filteredStackIds[0];
+    this._updateTags();
+  }
+
+  /**
+   * Update filter's tags.
+   * @private
+   */
+  _updateTags(): void {
+    this.allStackTags.length = 0;
+    this.stacksFiltered.forEach((stack: che.IStack) => {
+      if (!this.filteredStackIds.length || this.filteredStackIds.indexOf(stack.id) !== -1) {
+        this.allStackTags = this.allStackTags.concat(stack.tags);
+      }
+    });
+    this.allStackTags = this.lodash.uniq(this.allStackTags);
   }
 
   /**
@@ -227,11 +270,23 @@ export class StackSelectorController {
     if (this.searchString) {
       this.stacksFiltered = this.$filter('stackSearchFilter')(this.stacksFiltered, this.searchString);
     }
-    this.stacksFiltered = this.$filter('orderBy')(this.stacksFiltered, this.stackOrderBy);
+    // this.stacksFiltered = this.$filter('orderBy')(this.stacksFiltered, this.stackOrderBy);
 
     if (this.stacksFiltered.length === 0) {
       return;
     }
+
+    this.stacksFiltered.sort((stackA: che.IStack, stackB: che.IStack) => {
+      const nameA = stackA.name.toLowerCase();
+      const nameB = stackB.name.toLowerCase();
+      if (nameA < nameB) {
+        return -1;
+      }
+      if (nameA > nameB) {
+        return 1;
+      }
+      return 0;
+    });
 
     // check if selected stack is shown or not
     const needSelectStack = this.lodash.every(this.stacksFiltered, (stack: che.IStack) => {

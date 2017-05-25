@@ -26,11 +26,13 @@
          flex-order="1" flex-order-gt-md="2"
          layout="row"
          layout-align="start center" layout-align-gt-md="end center">
-      <toggle-single-button che-title="Filters"
-                            che-font-icon="fa fa-sliders"
-                            che-state="stackSelectorController.showFilters"
-                            che-on-change="stackSelectorController.toggleOnChange(state)"
-                            ng-class="{'stack-selector-filters-active': stackSelectorController.tagFiltersActive}"></toggle-single-button>
+      <toggle-button-popover button-title="Filters"
+                             button-font-icon="fa fa-sliders">
+        <che-stack-library-filter stack-tags="stackSelectorController.allStackTags"
+                                  selected-tags="stackSelectorController.selectedTags"
+                                  on-tags-changes="stackSelectorController.onTagsChanges(tags)">
+        </che-stack-library-filter>
+      </toggle-button-popover>
       <che-button-default che-button-title="Add Stack"
                           che-button-icon="material-design icon-ic_add_24px"
                           name="addStack"
@@ -73,12 +75,12 @@
           </div>
         </md-item-content>
       </md-item>
-
       <!-- Stacks list -->
       <che-list class="stack-selector-stack-list">
         <stack-selector-item
           stack="stack"
-          ng-repeat="stack in stackSelectorController.stacksFiltered | orderBy:[stackSelectorController.stackOrderBy]"
+          ng-repeat="stack in stackSelectorController.stacksFiltered"
+          ng-show="stackSelectorController.filteredStackIds.indexOf(stack.id) !== -1"
           stack-icon-link="stackSelectorController.stackIconLinks[stack.id]"
           stack-machines="stackSelectorController.stackMachines[stack.id]"
           stack-id-selected="stackSelectorController.selectedStackId"

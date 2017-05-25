@@ -80,7 +80,7 @@ export class TemplateSelectorController {
     }
 
     const stack = this.stackSelectorSvc.getStackById(stackId);
-    this.stackTags = stack.tags;
+    this.stackTags = stack ? stack.tags : [];
 
     this.filterAndSortTemplates();
   }
