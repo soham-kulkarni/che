@@ -270,24 +270,11 @@ export class StackSelectorController {
     if (this.searchString) {
       this.stacksFiltered = this.$filter('stackSearchFilter')(this.stacksFiltered, this.searchString);
     }
-    // this.stacksFiltered = this.$filter('orderBy')(this.stacksFiltered, this.stackOrderBy);
+    this.stacksFiltered = this.$filter('orderBy')(this.stacksFiltered, this.stackOrderBy);
 
     if (this.stacksFiltered.length === 0) {
       return;
     }
-
-    this.stacksFiltered.sort((stackA: che.IStack, stackB: che.IStack) => {
-      const nameA = stackA.name.toLowerCase();
-      const nameB = stackB.name.toLowerCase();
-      if (nameA < nameB) {
-        return -1;
-      }
-      if (nameA > nameB) {
-        return 1;
-      }
-      return 0;
-    });
-
     // check if selected stack is shown or not
     const needSelectStack = this.lodash.every(this.stacksFiltered, (stack: che.IStack) => {
       return stack.id !== this.selectedStackId;
