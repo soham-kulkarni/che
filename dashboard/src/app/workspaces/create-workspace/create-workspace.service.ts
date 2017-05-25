@@ -27,6 +27,10 @@ export class CreateWorkspaceSvc {
    */
   private $location: ng.ILocationService;
   /**
+   * Log service.
+   */
+  private $log: ng.ILogService;
+  /**
    * Promises service.
    */
   private $q: ng.IQService;
@@ -57,21 +61,13 @@ export class CreateWorkspaceSvc {
     [namespaceId: string]: Array<che.IWorkspace>
   };
 
-  // todo
-  private workspaceOfProject: any;
-  // todo
-  private namespace: string;
-  // todo
-  private project: any;
-  // todo
-  private ideAction: any;
-
   /**
    * Default constructor that is using resource injection
    * @ngInject for Dependency injection
    */
-  constructor($location: ng.ILocationService, $q: ng.IQService, cheWorkspace: CheWorkspace, ideSvc: IdeSvc, namespaceSelectorSvc: NamespaceSelectorSvc, stackSelectorSvc: StackSelectorSvc, templateSelectorSvc: TemplateSelectorSvc) {
+  constructor($location: ng.ILocationService, $log: ng.ILogService, $q: ng.IQService, cheWorkspace: CheWorkspace, ideSvc: IdeSvc, namespaceSelectorSvc: NamespaceSelectorSvc, stackSelectorSvc: StackSelectorSvc, templateSelectorSvc: TemplateSelectorSvc) {
     this.$location = $location;
+    this.$log = $log;
     this.$q = $q;
     this.cheWorkspace = cheWorkspace;
     this.ideSvc = ideSvc;
@@ -144,153 +140,139 @@ export class CreateWorkspaceSvc {
     return defer.promise;
   }
 
+  /**
+   * Creates a workspace from config.
+   *
+   * @param {che.IWorkspaceConfig} workspaceConfig the config of workspace which will be created
+   * @return {IPromise<any>}
+   */
   createWorkspace(workspaceConfig: che.IWorkspaceConfig): ng.IPromise<any> {
-    console.log('>>> stackId: ', this.stackSelectorSvc.getStackId());
-    console.log('>>> workspaceConfig: ', workspaceConfig);
-    console.log('>>> templateNames: ', this.templateSelectorSvc.getTemplateNames());
-
     const namespaceId = this.namespaceSelectorSvc.getNamespaceId(),
           templateNames = this.templateSelectorSvc.getTemplateNames();
 
+    const projectTemplates = this.templateSelectorSvc.getTemplates().filter((projectTemplate: che.IProjectTemplate) => {
+      return templateNames.indexOf(projectTemplate.name) !== -1;
+    });
+
     return this.cheWorkspace.createWorkspaceFromConfig(namespaceId, workspaceConfig, {}).then((workspace: che.IWorkspace) => {
-      console.log('>>> new workspace created');
 
       this.cheWorkspace.startWorkspace(workspace.id, workspace.config.defaultEnv).then(() => {
         this.redirectToIde(namespaceId, workspace);
-        console.log('>>> ws is starting');
         this.cheWorkspace.getWorkspacesById().set(workspace.id, workspace);
         this.cheWorkspace.startUpdateWorkspaceStatus(workspace.id);
-        // this.ideSvc.openIde(workspace.id);
         return this.cheWorkspace.fetchStatusChange(workspace.id, 'RUNNING');
       }).then(() => {
-        console.log('>>> workspace is running');
         return this.cheWorkspace.fetchWorkspaceDetails(workspace.id);
       }).then(() => {
-        console.log('>>> workspace is fetched');
-        return this.addProjects(workspace.id, templateNames);
+        return this.createProjects(workspace.id, projectTemplates);
+      }).then(() => {
+        return this.importProjects(workspace.id, projectTemplates);
       });
     });
   }
 
+  /**
+   * Redirects to IDE with specified workspace.
+   *
+   * @param {string} namespaceId the namespace ID
+   * @param {che.IWorkspace} workspace the workspace to open in IDE
+   */
   redirectToIde(namespaceId: string, workspace: che.IWorkspace): void {
     const path = `/ide/${namespaceId}/${workspace.config.name}`;
     this.$location.path(path);
   }
 
-  addProjects(workspaceId: string, templateNames: string[]): ng.IPromise<any> {
-    console.log('>>> CreateWorkspaceSvc.addProjects, arguments: ', arguments);
-    if (templateNames.length === 0) {
-      return;
+  /**
+   * Creates bunch of projects.
+   *
+   * @param {string} workspaceId the workspace ID
+   * @param {Array<che.IProjectTemplate>} projectTemplates the list of project templates to create
+   * @return {IPromise<any>}
+   */
+  createProjects(workspaceId: string, projectTemplates: Array<che.IProjectTemplate>): ng.IPromise<any> {
+    if (projectTemplates.length === 0) {
+      return this.$q.reject();
     }
 
-    const projects = this.templateSelectorSvc.getTemplates().filter((template: che.IProjectTemplate) => {
-      return templateNames.indexOf(template.name) !== -1;
-    });
-    console.log('>>> projects: ', projects);
-
     const workspaceAgent = this.cheWorkspace.getWorkspaceAgent(workspaceId);
-    console.log('>>> workspaceAgent: ', workspaceAgent);
-    return workspaceAgent.getProject().createProjects(projects).then(() => {
-      console.log('>>> before importing projects');
-      return this.importProjects(workspaceId, projects);
-    });
+    return workspaceAgent.getProject().createProjects(projectTemplates);
   }
 
-  importProjects(workspaceId: string, projects: Array<che.IProjectTemplate>): ng.IPromise<any> {
-    console.log('>>> CreateWorkspaceSvc.importProjects, arguments: ', arguments);
+  /**
+   * Imports bunch of projects in row.
+   * Returns resolved promise if all project are imported properly, otherwise returns rejected promise with list of names of failed projects.
+   *
+   * @param {string} workspaceId the workspace ID
+   * @param {Array<che.IProjectTemplate>} projectTemplates the list of project templates to import
+   * @return {IPromise<any>}
+   */
+  importProjects(workspaceId: string, projectTemplates: Array<che.IProjectTemplate>): ng.IPromise<any> {
     const defer = this.$q.defer();
     defer.resolve();
     let accumulatorPromise = defer.promise;
 
     const projectTypeResolverService = this.cheWorkspace.getWorkspaceAgent(workspaceId).getProjectTypeResolver();
 
-    accumulatorPromise = projects.reduce((_accumulatorPromise: ng.IPromise<any>, project: che.IProjectTemplate, index: number) => {
+    const failedProjects = [];
+
+    accumulatorPromise = projectTemplates.reduce((_accumulatorPromise: ng.IPromise<any>, project: che.IProjectTemplate) => {
       return _accumulatorPromise.then(() => {
-        return this.addCommands(workspaceId, project.name, project.commands).finally(() => {
-          console.log('>>> commands are added for project.name: ', project.name);
-          return projectTypeResolverService.resolveProjectType(project as any).finally(() => {
-            console.log('>>> import is done for project.name: ', project.name);
-          });
+        return this.addCommands(workspaceId, project.name, project.commands).catch(() => {
+          // adding commands errors, ignore them here
+          return this.$q.when();
+        }).then(() => {
+          return projectTypeResolverService.resolveProjectType(project as any);
+        }).catch((error: any) => {
+          failedProjects.push(project.name);
+          if (error && error.message) {
+            this.$log.error(`Importing of project ${project.name} failed with error: ${error.message}`);
+          }
         });
       });
     }, accumulatorPromise);
 
-    return accumulatorPromise;
+    return accumulatorPromise.then(() => {
+      if (failedProjects.length) {
+        return this.$q.reject(failedProjects);
+      }
+      return this.$q.when();
+    });
   }
 
+  /**
+   * Adds bunch of commands for project in row.
+   * Returns resolved promise if all commands are imported properly, otherwise returns rejected promise with list of names of failed commands.
+   *
+   * @param {string} workspaceId the workspace ID
+   * @param {string} projectName the name of project
+   * @param {any[]} projectCommands the list of commands
+   * @return {IPromise<any>}
+   */
   addCommands(workspaceId: string, projectName: string, projectCommands: any[]): ng.IPromise<any> {
-    console.log('>>> CreateWorkspaceSvc.addCommands');
     const defer = this.$q.defer();
     defer.resolve();
     let accumulatorPromise = defer.promise;
 
-    accumulatorPromise = projectCommands.reduce((_accumulatorPromise: ng.IPromise<any>, command: any, number: number) => {
-      console.log('>>> add command number: ', number);
+    const failedCommands = [];
+
+    accumulatorPromise = projectCommands.reduce((_accumulatorPromise: ng.IPromise<any>, command: any) => {
       command.name = projectName + ':' + command.name;
       return _accumulatorPromise.then(() => {
-        return this.cheWorkspace.addCommand(workspaceId, command).finally(() => {
-          console.log(`>>> added command ${command.name} in project ${projectName}`);
-        });
+        return this.cheWorkspace.addCommand(workspaceId, command);
+      }, (error: any) => {
+        failedCommands.push(command.name);
+        if (error && error.message) {
+          this.$log.error(`Adding of command "${command.name}" failed for project "${projectName}" with error: ${error}`);
+        }
       });
     }, accumulatorPromise);
 
-    return accumulatorPromise;
-  }
-
-  // review methods below
-  // whether they are necessary or not
-
-  setWorkspaceOfProject(workspaceOfProject: any): void {
-    this.workspaceOfProject = workspaceOfProject;
-  }
-
-  getWorkspaceOfProject(): void {
-    return this.workspaceOfProject;
-  }
-
-  setWorkspaceNamespace(namespace: string): void {
-    this.namespace = namespace;
-  }
-
-  getWorkspaceNamespace(): string {
-    return this.namespace;
-  }
-
-  setProject(project: any): void {
-    this.project = project;
-  }
-
-  getProject(): any {
-    return this.project;
-  }
-
-  hasIdeAction(): boolean {
-    return this.getIDEAction().length > 0;
-  }
-
-  getIDEAction(): any {
-    return this.ideAction;
-  }
-
-  setIDEAction(ideAction: any): void {
-    this.ideAction = ideAction;
-  }
-
-  getIDELink(): string {
-    let link = '#/ide/' + this.getWorkspaceNamespace() + '/' + this.getWorkspaceOfProject();
-    if (this.hasIdeAction()) {
-      link = link + '?action=' + this.ideAction;
-    }
-    return link;
-  }
-
-  _redirectToIDE(): void {
-    const path = '/ide/' + this.getWorkspaceNamespace() + '/' + this.getWorkspaceOfProject();
-    this.$location.path(path);
-
-    if (this.getIDEAction()) {
-      this.$location.search({'action': this.getIDEAction()});
-    }
+    return accumulatorPromise.then(() => {
+      if (failedCommands.length) {
+        return this.$q.reject(failedCommands);
+      }
+      return this.$q.when();
+    });
   }
 
 }
