@@ -31,13 +31,9 @@ export class TemplateSelectorSvc {
    */
   cheProjectTemplate: CheProjectTemplate;
   /**
-   * The list of templates.
+   * The list of selected templates.
    */
   templates: Array<che.IProjectTemplate>;
-  /**
-   * Names of selected templates.
-   */
-  templateNames: string[];
 
   /**
    * Default constructor that is using resource injection
@@ -74,7 +70,7 @@ export class TemplateSelectorSvc {
    *
    * @return {Array<che.IProjectTemplate>}
    */
-  getTemplates(): Array<che.IProjectTemplate> {
+  getAllTemplates(): Array<che.IProjectTemplate> {
     return this.cheProjectTemplate.getAllProjectTemplates();
   }
 
@@ -85,7 +81,7 @@ export class TemplateSelectorSvc {
    * @return {undefined|che.IProjectTemplate}
    */
   getTemplateByName(name: string): che.IProjectTemplate {
-    return this.getTemplates().find((template: che.IProjectTemplate) => {
+    return this.getAllTemplates().find((template: che.IProjectTemplate) => {
       return template.name === name;
     });
   }
@@ -93,19 +89,19 @@ export class TemplateSelectorSvc {
   /**
    * Callback which is called when template is checked or unchecked.
    *
-   * @param {string[]} templateNames the list of names of selected templates
+   * @param {Array<che.IProjectTemplate>} templates the list of selected templates
    */
-  onTemplatesSelected(templateNames: string[]): void {
-    this.templateNames = templateNames;
+  onTemplatesSelected(templates: Array<che.IProjectTemplate>): void {
+    this.templates = templates;
   }
 
   /**
-   * Returns selected template name.
+   * Returns selected templates.
    *
-   * @return {string[]}
+   * @return {che.IProjectTemplate[]}
    */
-  getTemplateNames(): string[] {
-    return this.templateNames;
+  getTemplates(): Array<che.IProjectTemplate> {
+    return this.templates;
   }
 
 }

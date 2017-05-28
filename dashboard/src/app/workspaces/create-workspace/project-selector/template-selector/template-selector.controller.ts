@@ -65,7 +65,7 @@ export class TemplateSelectorController {
     this.stackSelectorSvc.subscribe(this.onStackChanged.bind(this));
 
     this.templateSelectorSvc.fetchTemplates().then(() => {
-      this.templates = this.$filter('orderBy')(this.templateSelectorSvc.getTemplates(), ['projectType', 'displayName']);
+      this.templates = this.$filter('orderBy')(this.templateSelectorSvc.getAllTemplates(), ['projectType', 'displayName']);
       this.filterAndSortTemplates();
     });
   }
@@ -110,11 +110,8 @@ export class TemplateSelectorController {
   onTemplateClicked(templateName: string, isChecked: boolean): void {
     this.cheListHelper.itemsSelectionStatus[templateName] = isChecked;
 
-    const selectedTemplates = this.cheListHelper.getSelectedItems(),
-          selectedTemplatesNames = selectedTemplates.map((template: che.IProjectTemplate) => {
-            return template.name;
-          });
+    const selectedTemplates = this.cheListHelper.getSelectedItems() as Array<che.IProjectTemplate>;
 
-    this.templateSelectorSvc.onTemplatesSelected(selectedTemplatesNames);
+    this.templateSelectorSvc.onTemplatesSelected(selectedTemplates);
   }
 }
