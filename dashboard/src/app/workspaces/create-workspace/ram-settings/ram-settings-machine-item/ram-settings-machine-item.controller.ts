@@ -11,9 +11,8 @@
 'use strict';
 
 /**
- * @ngdoc controller
- * @name workspaces.ram-settings-machine-item.controller:RamSettingsMachineItemController
- * @description This class is handling the controller of RAM settings. todo
+ * This class is handling the controller for the machine item row in ram settings.
+ *
  * @author Oleksii Kurinnyi
  */
 export class RamSettingsMachineItemController {
@@ -27,7 +26,7 @@ export class RamSettingsMachineItemController {
   onRamChange: (data: {name: string, memoryLimitGBytes: number}) => void;
 
   /**
-   * Callback which is called when RAM setting is changed.
+   * Callback which is called when machine's RAM setting is changed.
    *
    * @param {number} value a machine's memory limit in GB
    */

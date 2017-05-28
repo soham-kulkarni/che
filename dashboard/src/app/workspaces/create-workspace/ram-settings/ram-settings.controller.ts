@@ -27,7 +27,7 @@ type machine = {
  */
 export class RamSettingsController {
   /**
-   * todo
+   * Filter service.
    */
   private $filter: ng.IFilterService;
   /**
@@ -91,7 +91,7 @@ export class RamSettingsController {
   }
 
   /**
-   * todo
+   * Returns number.
    *
    * @param {string} memoryLimit a string which contains machine's memory limit.
    * @return {number}
