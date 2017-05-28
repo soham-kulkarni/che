@@ -17,7 +17,7 @@ import {StackSelectorSvc} from './stack-selector/stack-selector.service';
 import {TemplateSelectorSvc} from './project-selector/template-selector/template-selector.service';
 
 /**
- * todo
+ * This class is handling the service for workspace creation.
  *
  * @author Oleksii Kurinnyi
  */
@@ -252,6 +252,10 @@ export class CreateWorkspaceSvc {
     const defer = this.$q.defer();
     defer.resolve();
     let accumulatorPromise = defer.promise;
+
+    if (projectCommands.length === 0) {
+      return accumulatorPromise;
+    }
 
     const failedCommands = [];
 

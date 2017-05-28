@@ -20,7 +20,7 @@ import {TemplateSelectorSvc} from './project-selector/template-selector/template
 import {RandomSvc} from '../../../components/utils/random.service';
 
 /**
- * todo
+ * This class is handling the controller for workspace creation.
  *
  * @author Oleksii Kurinnyi
  */
@@ -155,6 +155,11 @@ export class CreateWorkspaceController {
     });
   }
 
+  /**
+   * Returns list of namespaces.
+   *
+   * @return {Array<che.INamespace>}
+   */
   getNamespaces(): Array<che.INamespace> {
     return this.namespaceSelectorSvc.getNamespaces();
   }
