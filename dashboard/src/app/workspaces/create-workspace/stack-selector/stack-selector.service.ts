@@ -49,13 +49,6 @@ export class StackSelectorSvc extends Observable {
   }
 
   /**
-   * Notify observers that new stack is selected.
-   */
-  publish(): void {
-    super.publish();
-  }
-
-  /**
    * Fetch list of available stacks.
    *
    * @return {IPromise<Array<che.IStack>>}
