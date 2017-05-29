@@ -16,11 +16,11 @@ che_host=$(cat /etc/hosts | grep che-host | awk '{print $1;}')
 api_url=$(if [ "$CHE_API" != "http://che-host:8080/wsmaster/api" ]; then echo $CHE_API; else echo $che_host:8080/api; fi)
 
 echo '#!/bin/sh' > $script
-echo 'host=$(echo "$(if [ "$1" == "-p" ]; then echo "$3" | sed -e '\'''s/git@//'\''; else echo "$1" | sed -e '\''s/git@//'\''; fi)")' >> $script
+echo 'host=$(echo "$(if [ "$1" = "-p" ]; then echo "$3" | sed -e "s/git@//"; else echo "$1" | sed -e "s/git@//"; fi)")' >> $script
 echo 'token_suffix='$token_suffix >> $script
 echo 'che_host='$che_host >> $script
 echo 'api_url='$api_url >> $script
-echo 'ssh_key=$(echo "$(curl -s "$CHE_API/ssh/vcs/find?name=$host&token=$token"| grep -Po '\''"privateKey":.*?[^\\\]",'\'')" | sed -e "s/\"privateKey\":\"//")' >> $script
+echo 'ssh_key=$(echo "$(curl -s "$api_url"/ssh/vcs/find?name="$host"| grep -Po '\''"privateKey":.*?[^\\\\]",'\''| sed -e "s/\"privateKey\":\"//" | sed  -e "s/\\\\\u003d/=/g")")' >> $script
 echo 'if [ -n "$ssh_key" ]' >> $script
 echo 'then' >> $script
 echo '    key_file=$(mktemp)' >> $script
