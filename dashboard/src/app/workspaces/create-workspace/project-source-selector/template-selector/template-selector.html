@@ -5,6 +5,7 @@
 
     <template-selector-item ng-repeat="template in templateSelectorController.filteredTemplates"
                             template="template"
+                            template-is-added="templateSelectorController.isTemplateAdded(template.name)"
                             on-template-click="templateSelectorController.onTemplateClicked(templateName, isChecked)"></template-selector-item>
 
     <div ng-show="templateSelectorController.filteredTemplates.length === 0">

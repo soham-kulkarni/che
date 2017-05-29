@@ -1,5 +1,5 @@
 <div class="template-selector-item">
-
+  templateIsAdded: {{templateIsAdded}}
   <che-list-item flex>
 
     <div flex="100"
@@ -11,6 +11,7 @@
            layout-align="center center"
            class="che-checkbox-area template-selector-item-checkbox">
         <che-list-item-checked ng-model="isChecked"
+                               ng-disabled="templateIsAdded"
                                che-aria-label-checkbox="Sample {{template.name}}"
                                ng-click="onTemplateClick({templateName: template.name, isChecked: isChecked})"></che-list-item-checked>
       </div>

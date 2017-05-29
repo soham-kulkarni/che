@@ -114,4 +114,14 @@ export class TemplateSelectorController {
 
     this.templateSelectorSvc.onTemplatesSelected(selectedTemplates);
   }
+
+  isTemplateAdded(templateName: string): boolean {
+    const addedTemplates = this.templateSelectorSvc.getTemplates();
+    if (!addedTemplates || addedTemplates.length === 0) {
+      return false;
+    }
+    return addedTemplates.some((template: che.IProjectTemplate) => {
+      return template.name === templateName;
+    });
+  }
 }

@@ -10,28 +10,28 @@
  */
 'use strict';
 
-/**
- * Defines a directive for displaying template item.
- *
- * @author Oleksii Kurinnyi
- */
-export class TemplateSelectorItem implements ng.IDirective {
+export class TemplateSelector implements ng.IDirective {
   restrict: string = 'E';
-  templateUrl: string = 'app/workspaces/create-workspace/project-selector/template-selector/template-selector-item/template-selector-item.html';
-  replace: boolean = false;
+  templateUrl: string = 'app/workspaces/create-workspace/project-source-selector/template-selector/template-selector.html';
+  replace: boolean = true;
+
+  controller: string = 'TemplateSelectorController';
+  controllerAs: string = 'templateSelectorController';
+
+  bindToController: boolean = true;
 
   scope: {
     [propName: string]: string;
   };
 
   /**
-   * Default constructor that is using resource
+   * Default constructor that is using resource injection
    * @ngInject for Dependency injection
    */
   constructor() {
     this.scope = {
-      template: '=',
-      onTemplateClick: '&'
+      stackTags: '='
     };
   }
+
 }

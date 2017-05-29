@@ -68,10 +68,10 @@ import {ImportZipProject} from './create-workspace/project-source-selector/impor
 import {ImportGithubProjectController} from './create-workspace/project-source-selector/import-github-project/import-github-project.controller';
 import {ImportGithubProjectService} from './create-workspace/project-source-selector/import-github-project/import-github-project.service';
 import {ImportGithubProject} from './create-workspace/project-source-selector/import-github-project/import-github-project.directive';
-import {TemplateSelectorController} from './create-workspace/project-selector/template-selector/template-selector.controller';
-import {TemplateSelectorSvc} from './create-workspace/project-selector/template-selector/template-selector.service';
-import {TemplateSelector} from './create-workspace/project-selector/template-selector/template-selector.directive';
-import {TemplateSelectorItem} from './create-workspace/project-selector/template-selector/template-selector-item/template-selector-item.directive';
+import {TemplateSelectorController} from './create-workspace/project-source-selector/template-selector/template-selector.controller';
+import {TemplateSelectorSvc} from './create-workspace/project-source-selector/template-selector/template-selector.service';
+import {TemplateSelector} from './create-workspace/project-source-selector/template-selector/template-selector.directive';
+import {TemplateSelectorItem} from './create-workspace/project-source-selector/template-selector/template-selector-item/template-selector-item.directive';
 
 import {CheWorkspaceRamAllocationSliderController} from './workspace-ram-slider/che-workspace-ram-allocation-slider.controller';
 import {CheWorkspaceRamAllocationSlider} from './workspace-ram-slider/che-workspace-ram-allocation-slider.directive';
