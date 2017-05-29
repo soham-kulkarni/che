@@ -42,58 +42,48 @@
     </div>
   </div>
 
-  <div class="stack-selector-list">
-    <md-content ng-hide="stackSelectorController.stacks.length === 0 || stackSelectorController.stacksFiltered.length === 0"
-                md-scroll-y flex
-                md-theme="default">
-
-      <!-- Stacks list header -->
-      <md-item class="noselect" hide-xs hide-sm hide-md>
-        <md-item-content>
-          <div class="stack-selector-list-header">
-            <div flex="100"
-                 layout="row" layout-align="start stretch"
-                 class="che-list-item-row">
-              <div flex layout="row"
-                   layout-align="start center"
-                   class="che-list-item-details">
-                <che-list-header-column class="stack-selector-icon-column"
-                                        che-column-title=""></che-list-header-column>
-                <che-list-header-column flex="auto"
-                                        che-sort-value="stackSelectorController.stackOrderBy"
-                                        che-sort-item="name"
-                                        che-column-title="Name"></che-list-header-column>
-                <che-list-header-column flex="30"
-                                        class="stack-selector-title-ram-offset"
-                                        che-column-title="RAM"></che-list-header-column>
-                <!-- todo -->
-                <!-- not implemented yet -->
-                <!--<che-list-header-column flex="10"-->
-                <!--che-column-title="NB Pull"></che-list-header-column>-->
-              </div>
+  <div class="stack-selector-list" ng-hide="stackSelectorController.stacksFiltered.length === 0">
+    <div>
+      <div>
+        <!-- Stacks list header -->
+        <che-list-header>
+          <div flex="100"
+               layout="row" layout-align="start stretch"
+               class="che-list-item-row">
+            <div flex layout="row"
+                 layout-align="start center"
+                 class="che-list-item-details">
+              <che-list-header-column class="stack-selector-icon-column"
+                                      che-column-title=""></che-list-header-column>
+              <che-list-header-column flex="auto"
+                                      che-sort-value="stackSelectorController.stackOrderBy"
+                                      on-sort-change="stackSelectorController.buildFilteredList()"
+                                      che-sort-item="name"
+                                      che-column-title="Name"></che-list-header-column>
+              <che-list-header-column flex="25"
+                                      class="stack-selector-title-ram-offset"
+                                      che-column-title="RAM"></che-list-header-column>
             </div>
           </div>
-        </md-item-content>
-      </md-item>
-      <!-- Stacks list -->
-      <che-list class="stack-selector-stack-list">
-        <stack-selector-item
-          stack="stack"
-          ng-repeat="stack in stackSelectorController.stacksFiltered"
-          ng-show="stackSelectorController.filteredStackIds.indexOf(stack.id) !== -1"
-          stack-icon-link="stackSelectorController.stackIconLinks[stack.id]"
-          stack-machines="stackSelectorController.stackMachines[stack.id]"
-          stack-id-selected="stackSelectorController.selectedStackId"
-          stack-on-click="stackSelectorController.selectStack(stackId)"
-          data-stack-id="{{stack.id}}"></stack-selector-item>
-      </che-list>
-    </md-content>
-
-    <div class="che-list-empty">
-      <span ng-show="stackSelectorController.stacks.length > 0 && stackSelectorController.stacksFiltered.length === 0">No stacks found.</span>
-      <span ng-show="stackSelectorController.stacks.length === 0">There are no stacks.</span>
+        </che-list-header>
+        <!-- Stacks list -->
+        <che-list class="stack-selector-stack-list">
+          <stack-selector-item
+            stack="stack"
+            ng-repeat="stack in stackSelectorController.stacksFiltered"
+            ng-show="stackSelectorController.filteredStackIds.indexOf(stack.id) !== -1"
+            stack-icon-link="stackSelectorController.stackIconLinks[stack.id]"
+            stack-machines="stackSelectorController.stackMachines[stack.id]"
+            stack-id-selected="stackSelectorController.selectedStackId"
+            stack-on-click="stackSelectorController.selectStack(stackId)"
+            data-stack-id="{{stack.id}}"></stack-selector-item>
+        </che-list>
+      </div>
     </div>
-
+  </div>
+  <div class="che-list-empty">
+    <span ng-show="stackSelectorController.stacks.length > 0 && stackSelectorController.stacksFiltered.length === 0">No stacks found.</span>
+    <span ng-show="stackSelectorController.stacks.length === 0">There are no stacks.</span>
   </div>
 
 </div>
