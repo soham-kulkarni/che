@@ -19,7 +19,6 @@
   <md-progress-linear md-mode="indeterminate" class="stacks-list-progress"
                       ng-show="listStacksController.isLoading"></md-progress-linear>
   <md-content flex class="stacks-list-content" ng-hide="listStacksController.isLoading">
-<div class="template-list"><div>
     <che-list-header che-input-placeholder="Search"
                      che-search-model="listStacksController.stackFilter.name"
                      che-on-search-change="listStacksController.onSearchChanged(str)"
@@ -73,7 +72,6 @@
               stack="stack"
               user-id="listStacksController.userId"></stack-item>
     </che-list>
-</div></div>
     <div class="che-list-empty">
         <span ng-show="listStacksController.stacks.length > 0 && listStacksController.cheListHelper.visibleItemsNumber === 0">
           No stacks found.
