@@ -22,11 +22,6 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Listeners;
 import org.testng.annotations.Test;
 
-import java.net.URL;
-import java.util.Set;
-
-import static java.util.Collections.emptySet;
-import static java.util.Collections.singleton;
 import static org.eclipse.che.core.db.DBInitializer.BARE_DB_INIT_PROPERTY_NAME;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.atLeast;
@@ -55,9 +50,7 @@ public class RecipeLoaderTest {
     @BeforeMethod
     public void startup() throws Exception {
         when(dbInitializer.getInitProperties()).thenReturn(ImmutableMap.of(BARE_DB_INIT_PROPERTY_NAME, "true"));
-        final URL url = Thread.currentThread().getContextClassLoader().getResource("recipes.json");
-        final Set<String> paths = url != null ? singleton(url.getPath()) : emptySet();
-        recipeLoader = new RecipeLoader(paths, recipeDao, dbInitializer);
+        recipeLoader = new RecipeLoader("recipes.json", recipeDao, dbInitializer);
     }
 
     @Test
@@ -69,9 +62,7 @@ public class RecipeLoaderTest {
 
     @Test
     public void shouldNotThrowExceptionWhenLoadPredefinedRecipesFromInvalidJson() throws Exception {
-        final URL url = Thread.currentThread().getContextClassLoader().getResource("invalid-recipes.json");
-        final Set<String> paths = url != null ? singleton(url.getPath()) : emptySet();
-        recipeLoader = new RecipeLoader(paths, recipeDao, dbInitializer);
+        recipeLoader = new RecipeLoader("invalid-recipes.json", recipeDao, dbInitializer);
 
         recipeLoader.start();
     }
@@ -89,7 +80,7 @@ public class RecipeLoaderTest {
 
     @Test
     public void doNotThrowExceptionWhenFileWithRecipesBySpecifiedPathIsNotExist() throws Exception {
-        recipeLoader = new RecipeLoader(singleton("non-existing-file"), recipeDao, dbInitializer);
+        recipeLoader = new RecipeLoader("non-existing-file", recipeDao, dbInitializer);
 
         recipeLoader.start();
 

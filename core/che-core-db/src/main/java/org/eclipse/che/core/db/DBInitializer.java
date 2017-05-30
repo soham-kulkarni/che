@@ -49,6 +49,7 @@ import java.util.Map;
 @Singleton
 public class DBInitializer {
 
+    /** when value for this key true, then its mean that db is initialized at first time, otherwise db was previously initialized */
     public static final String BARE_DB_INIT_PROPERTY_NAME = "bare_database_init";
 
     private final Map<String, String> initProperties;
