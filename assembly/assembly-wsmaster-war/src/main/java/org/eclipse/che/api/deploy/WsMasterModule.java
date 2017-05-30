@@ -27,7 +27,6 @@ import org.eclipse.che.api.agent.WsAgent;
 import org.eclipse.che.api.agent.WsAgentLauncher;
 import org.eclipse.che.api.agent.server.launcher.AgentLauncher;
 import org.eclipse.che.api.agent.shared.model.Agent;
-import org.eclipse.che.api.agent.GitSshAgentLauncher;
 import org.eclipse.che.api.core.rest.CheJsonProvider;
 import org.eclipse.che.api.core.rest.MessageBodyAdapter;
 import org.eclipse.che.api.core.rest.MessageBodyAdapterInterceptor;

@@ -11,7 +11,7 @@
 
 script="/home/user/.ssh/git.sh"
 
-token_suffix=$(if [ "$USER_TOKEN" != "dummy_token" ]; then echo &token="$USER_TOKEN"; fi)
+token_suffix=$(if [ "$USER_TOKEN" != "dummy_token" ]; then echo "\"&token=$USER_TOKEN\""; fi)
 che_host=$(cat /etc/hosts | grep che-host | awk '{print $1;}')
 api_url=$(if [ "$CHE_API" != "http://che-host:8080/wsmaster/api" ]; then echo "$CHE_API"; else echo "$che_host:8080/api"; fi)
 
