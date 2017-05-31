@@ -53,6 +53,7 @@ export class ToggleSingleButton {
     // scope values
     this.scope = {
       init: '=?cheState',
+      state: '=?cheValue',
       title: '@cheTitle',
       fontIcon: '@?cheFontIcon',
       onChange: '&cheOnChange'

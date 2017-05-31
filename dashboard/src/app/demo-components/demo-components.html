@@ -382,11 +382,13 @@ Ultima Syriarum est Palaestina per intervalla magna protenta, cultis abundans te
       <textarea demo-source-render>
         <!-- toggle-button-popover -->
         <toggle-button-popover button-title="PopupTags"
+                               button-value="isOpen"
                                button-font-icon="fa fa-sliders">
           <che-stack-library-filter stack-tags="['tag1', 'tag2', 'tag3', 'tag4']"
                                     selected-tags="selectedTags">
           </che-stack-library-filter>
         </toggle-button-popover>
+        <button class="btn btn-default" ng-click="isOpen = !isOpen">Change popover state</button>
       </textarea>
       <p>
         <label><h4>Popover placement</h4></label>
