@@ -1,0 +1,354 @@
+package jsonrpc_test
+
+import (
+	"encoding/json"
+	"errors"
+	"github.com/eclipse/che/agents/go-agents/core/jsonrpc"
+	"sync"
+	"testing"
+	"time"
+)
+
+// TODO add timeouts to all the wait calls
+// TODO close reqRecorder in places where not closed
+
+func TestChannelSaysHello(t *testing.T) {
+	beforeConnected := time.Now()
+
+	// initialization routine
+	channel, connRecorder, _ := newTestChannel()
+	channel.Go()
+	defer channel.Close()
+
+	// send hello notification
+	channel.SayHello()
+
+	// wait while this notification is received by connection
+	connRecorder.WaitWriteCalled(1)
+
+	// check the received notification is expected one
+	helloNotification := &jsonrpc.ChannelConnected{}
+	connRecorder.UnmarshalRequestParams(0, helloNotification)
+
+	if helloNotification.ChannelID != channel.ID {
+		t.Fatalf("Channel ids are different %s != %s", helloNotification.ChannelID, channel.ID)
+	}
+	if helloNotification.Text != "Hello!" {
+		t.Fatalf("Expected text to be 'Hello' but it is %s", helloNotification.Text)
+	}
+	now := time.Now()
+	if !beforeConnected.Before(helloNotification.Time) || !helloNotification.Time.Before(now) {
+		t.Fatalf("Expected event time to be between %v < x < %v", beforeConnected, now)
+	}
+}
+
+func TestSendingNotification(t *testing.T) {
+	channel, connRecorder, _ := newTestChannel()
+	channel.Go()
+	defer channel.Close()
+
+	method := "event:my-event"
+	channel.Notify(method, &testStruct{"Test"})
+
+	connRecorder.WaitWriteCalled(1)
+
+	// check request
+	req, err := connRecorder.GetRequest(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if req.Method != method {
+		t.Fatalf("Expected to send %s method but sent %s", method, req.Method)
+	}
+	if !req.IsNotification() {
+		t.Fatalf("Expected request to be notification but it has id %v", req.ID)
+	}
+
+	// check params
+	event := &testStruct{}
+	json.Unmarshal(req.RawParams, event)
+	if event.Data != "Test" {
+		t.Fatal("Expected event data to be 'Test'")
+	}
+}
+
+func TestSendingRequest(t *testing.T) {
+	channel, connRecorder, _ := newTestChannel()
+	channel.Go()
+	defer channel.Close()
+
+	method := "domain.doSomething"
+	channel.Request(method, &testStruct{"Test"}, func(response *jsonrpc.Response, err error) {
+		// do nothing
+	})
+
+	connRecorder.WaitWriteCalled(1)
+
+	// check request
+	req, err := connRecorder.GetRequest(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if req.Method != method {
+		t.Fatalf("Expected to send %s method but sent %s", method, req.Method)
+	}
+	if req.IsNotification() {
+		t.Fatal("Expected request not to be notification but it does not have id")
+	}
+
+	// check params
+	event := &testStruct{}
+	json.Unmarshal(req.RawParams, event)
+	if event.Data != "Test" {
+		t.Fatal("Expected event data to be 'Test'")
+	}
+}
+
+func TestReceivingRequest(t *testing.T) {
+	channel, connRecorder, reqRecorder := newTestChannel()
+	channel.Go()
+	defer channel.Close()
+	defer reqRecorder.Close()
+
+	// prepare a test request object and put it in native connection read stream
+	reqBody, err := json.Marshal(testStruct{"Test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sentReq := &jsonrpc.Request{
+		ID:        1,
+		Method:    "domain.doSomething",
+		RawParams: reqBody,
+	}
+	connRecorder.ReadRequest(sentReq)
+
+	// channel needs some time to call the handler
+	reqRecorder.WaitHandleCalled(1)
+
+	receivedReq, _ := reqRecorder.Get(0)
+	if receivedReq.Method != sentReq.Method {
+		t.Fatalf("Sent method %s but received %s", sentReq.Method, receivedReq.Method)
+	}
+	if receivedReq.ID != sentReq.ID {
+		t.Fatalf("Sent id %T %v but received %T %v", sentReq.ID, sentReq.ID, receivedReq.ID, receivedReq.ID)
+	}
+	if string(receivedReq.RawParams) != string(sentReq.RawParams) {
+		t.Fatalf("Sent params %s but received %s", string(sentReq.RawParams), string(receivedReq.RawParams))
+	}
+}
+
+func TestSendingResponseBack(t *testing.T) {
+	channel, connRecorder, reqRecorder := newTestChannel()
+	channel.Go()
+	defer channel.Close()
+	defer reqRecorder.Close()
+
+	// prepare a test request object and put it in native connection read stream
+	reqBody, err := json.Marshal(testStruct{"Test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := &jsonrpc.Request{
+		ID:        1,
+		Method:    "domain.doSomething",
+		RawParams: reqBody,
+	}
+	connRecorder.ReadRequest(req)
+
+	// wait for request to arrive
+	reqRecorder.WaitHandleCalled(1)
+
+	// respond back
+	_, transmitter := reqRecorder.Get(0)
+	sentBody := testStruct{"response test data"}
+	transmitter.Send(sentBody)
+
+	// wait for response to be written
+	connRecorder.WaitWriteCalled(1)
+
+	resp, err := connRecorder.GetResponse(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// check the response is ok
+	if resp.ID != req.ID {
+		t.Fatalf("Expected ids to be the same but resp id %v != req id %v", resp.ID, req.ID)
+	}
+	if resp.Error != nil {
+		t.Fatalf("Expected to get response without error, but got %d %s", resp.Error.Code, resp.Error.Message)
+	}
+	respBody := testStruct{}
+	if err := json.Unmarshal(resp.Result, &respBody); err != nil {
+		t.Fatal(err)
+	}
+	if respBody != sentBody {
+		t.Fatalf("Expected to get the same body but got %v != %v", respBody, sentBody)
+	}
+}
+
+type testStruct struct {
+	Data string `json:"data"`
+}
+
+func newTestChannel() (*jsonrpc.Channel, *NativeConnRecorder, *RequestsRecorder) {
+	connRecorder := NewNativeConnRecorder()
+	reqRecorder := NewRecordingRequestHandler()
+	channel := jsonrpc.NewChannel(connRecorder, reqRecorder)
+	return channel, connRecorder, reqRecorder
+}
+
+type reqPair struct {
+	request     *jsonrpc.Request
+	transmitter jsonrpc.ResponseTransmitter
+}
+
+type RequestsRecorder struct {
+	mutex    *sync.Mutex
+	cond     *sync.Cond
+	closed   bool
+	requests []*reqPair
+}
+
+func NewRecordingRequestHandler() *RequestsRecorder {
+	mx := &sync.Mutex{}
+	return &RequestsRecorder{
+		mutex:    mx,
+		cond:     sync.NewCond(mx),
+		closed:   false,
+		requests: make([]*reqPair, 0),
+	}
+}
+
+func (rrh *RequestsRecorder) Handle(r *jsonrpc.Request, rt jsonrpc.ResponseTransmitter) {
+	rrh.mutex.Lock()
+	defer rrh.mutex.Unlock()
+	rrh.requests = append(rrh.requests, &reqPair{request: r, transmitter: rt})
+	rrh.cond.Broadcast()
+}
+
+func (rrh *RequestsRecorder) WaitHandleCalled(times int) {
+	rrh.cond.L.Lock()
+	for !rrh.closed && len(rrh.requests) < times {
+		rrh.cond.Wait()
+	}
+	rrh.cond.L.Unlock()
+}
+
+func (rrh *RequestsRecorder) Get(idx int) (*jsonrpc.Request, jsonrpc.ResponseTransmitter) {
+	rrh.mutex.Lock()
+	defer rrh.mutex.Unlock()
+	pair := rrh.requests[idx]
+	return pair.request, pair.transmitter
+}
+
+func (rrh *RequestsRecorder) Close() {
+	rrh.mutex.Lock()
+	defer rrh.mutex.Unlock()
+	rrh.closed = true
+	rrh.cond.Broadcast()
+}
+
+type NativeConnRecorder struct {
+	mutex          *sync.Mutex
+	cond           *sync.Cond
+	capturedWrites [][]byte
+	nextChan       chan []byte
+	closed         bool
+}
+
+func (ncr *NativeConnRecorder) GetCaptured(idx int) []byte {
+	return ncr.capturedWrites[idx]
+}
+
+func (ncr *NativeConnRecorder) GetAllCaptured() [][]byte {
+	// TODO wrap in lock
+	return ncr.capturedWrites
+}
+
+func (ncr *NativeConnRecorder) Unmarshal(idx int, v interface{}) error {
+	return json.Unmarshal(ncr.GetCaptured(idx), v)
+}
+
+func (ncr *NativeConnRecorder) GetRequest(idx int) (*jsonrpc.Request, error) {
+	req := &jsonrpc.Request{}
+	err := ncr.Unmarshal(idx, req)
+	return req, err
+}
+
+func (ncr *NativeConnRecorder) GetResponse(idx int) (*jsonrpc.Response, error) {
+	resp := &jsonrpc.Response{}
+	err := ncr.Unmarshal(idx, resp)
+	if floatId, ok := resp.ID.(float64); ok {
+		resp.ID = int(floatId)
+	}
+	return resp, err
+}
+
+func (ncr *NativeConnRecorder) UnmarshalRequestParams(idx int, v interface{}) error {
+	req, err := ncr.GetRequest(idx)
+	if err != nil {
+		return err
+	}
+	err = json.Unmarshal(req.RawParams, &v)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (ncr *NativeConnRecorder) WaitWriteCalled(times int) {
+	ncr.cond.L.Lock()
+	for !ncr.closed && len(ncr.capturedWrites) < times {
+		ncr.cond.Wait()
+	}
+	ncr.cond.L.Unlock()
+}
+
+func (ncr *NativeConnRecorder) ReadRequest(request *jsonrpc.Request) error {
+	data, err := json.Marshal(request)
+	if err != nil {
+		return err
+	}
+	ncr.Read(data)
+	return nil
+}
+
+func (ncr *NativeConnRecorder) Read(data []byte) {
+	ncr.nextChan <- data
+}
+
+func NewNativeConnRecorder() *NativeConnRecorder {
+	mx := &sync.Mutex{}
+	return &NativeConnRecorder{
+		mutex:          mx,
+		cond:           sync.NewCond(mx),
+		capturedWrites: make([][]byte, 0),
+		nextChan:       make(chan []byte),
+	}
+}
+
+func (ncr *NativeConnRecorder) Write(body []byte) error {
+	ncr.mutex.Lock()
+	ncr.capturedWrites = append(ncr.capturedWrites, body)
+	ncr.cond.Broadcast()
+	ncr.mutex.Unlock()
+	return nil
+}
+
+func (ncr *NativeConnRecorder) Next() ([]byte, error) {
+	data, ok := <-ncr.nextChan
+	if !ok {
+		return nil, jsonrpc.NewCloseErr(errors.New("Closed"))
+	}
+	return data, nil
+}
+
+func (ncr *NativeConnRecorder) Close() error {
+	ncr.mutex.Lock()
+	ncr.closed = true
+	ncr.cond.Broadcast()
+	ncr.mutex.Unlock()
+	close(ncr.nextChan)
+	return nil
+}

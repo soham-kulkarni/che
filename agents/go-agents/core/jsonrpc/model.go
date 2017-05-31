@@ -14,7 +14,9 @@
 //
 package jsonrpc
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
 const (
 	// ParseErrorCode indicates that invalid JSON was received by the server.
@@ -81,6 +83,18 @@ type Request struct {
 	RawParams json.RawMessage `json:"params"`
 }
 
+// IsNotification tests if this request is notification(ID is not set).
+func (r *Request) IsNotification() bool {
+	if r.ID == nil {
+		return true
+	} else if id, ok := r.ID.(string); ok {
+		return id == ""
+	} else if id, ok := r.ID.(int); ok {
+		return id == 0
+	}
+	return false
+}
+
 // Response is a reply on a certain request, which represents the result
 // of the certain operation execution.
 // Response MUST provide the same identifier as the request which forced it.
@@ -97,7 +111,7 @@ type Response struct {
 	// Result is the result of the method call.
 	// Result can be anything determined by the operation(method).
 	// Result and Error are mutually exclusive.
-	Result interface{} `json:"result,omitempty"`
+	Result json.RawMessage `json:"result,omitempty"`
 
 	// Result and Error are mutually exclusive.
 	// Present only if the operation execution fails due to an error.
@@ -117,5 +131,19 @@ type Error struct {
 
 	// Data any kind of data which provides additional
 	// information about the error e.g. stack trace, error time.
-	Data interface{} `json:"data,omitempty"`
+	Data json.RawMessage `json:"data,omitempty"`
+}
+
+// NewArgsError creates error object from provided error and sets error code InvalidParamsErrorCode.
+func NewArgsError(err error) Error {
+	return NewError(err, InvalidParamsErrorCode)
+}
+
+// NewError creates an error from the given error and code.
+func NewError(err error, code int) Error {
+	return Error{
+		error:   err,
+		Code:    code,
+		Message: err.Error(),
+	}
 }
