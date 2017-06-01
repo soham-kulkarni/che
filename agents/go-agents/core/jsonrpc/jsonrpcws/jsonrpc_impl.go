@@ -1,3 +1,24 @@
+// Package provides implementation of jsonrpc.NativeConn based on websocket.
+//
+// The example:
+//
+// Client:
+//	conn, err := jsonrpcws.Dial("ws://host:port/path")
+//	if err != nil {
+//      	panic(err)
+//      }
+// 	channel := jsonrpc.NewChannel(conn, jsonrpc.DefaultRouter)
+//	channel.Go()
+//	channel.SayHello()
+//
+// Server:
+//	conn, err := jsonrpcws.Upgrade(w, r)
+//	if err != nil {
+//      	panic(err)
+//      }
+//	channel := jsonrpc.NewChannel(conn, jsonrpc.DefaultRouter)
+//	channel.Go()
+//	channel.SayHello()
 package jsonrpcws
 
 import (
@@ -15,7 +36,15 @@ var (
 	}
 )
 
-func NewConn(w http.ResponseWriter, r *http.Request) (*NativeConnAdapter, error) {
+func NewDial(url string) (*NativeConnAdapter, error) {
+	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &NativeConnAdapter{conn}, nil
+}
+
+func Upgrade(w http.ResponseWriter, r *http.Request) (*NativeConnAdapter, error) {
 	conn, err := defaultUpgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return nil, err

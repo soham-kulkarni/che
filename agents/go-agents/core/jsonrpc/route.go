@@ -21,7 +21,7 @@ type Route struct {
 	// handler function should either return an error, or
 	// send it directly within transmitter#SendError func.
 	// Params is a value returned from the DecoderFunc.
-	HandlerFunc func(params interface{}, t *ResponseTransmitter)
+	HandlerFunc func(params interface{}, t ResponseTransmitter)
 }
 
 type Router struct {
@@ -32,6 +32,6 @@ func (r *Router) Manage(conn NativeConn) {
 
 }
 
-func (r *Router) Handle(request *Request, rt *ResponseTransmitter) {
+func (r *Router) Handle(request *Request, rt ResponseTransmitter) {
 
 }

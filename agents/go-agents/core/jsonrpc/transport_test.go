@@ -1,6 +1,7 @@
 package jsonrpc_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"github.com/eclipse/che/agents/go-agents/core/jsonrpc"
@@ -24,7 +25,7 @@ func TestChannelSaysHello(t *testing.T) {
 	channel.SayHello()
 
 	// wait while this notification is received by connection
-	connRecorder.WaitWriteCalled(1)
+	connRecorder.WaitUntil(WriteCalledAtLeast(1))
 
 	// check the received notification is expected one
 	helloNotification := &jsonrpc.ChannelConnected{}
@@ -42,6 +43,7 @@ func TestChannelSaysHello(t *testing.T) {
 	}
 }
 
+// X Notification -> X'
 func TestSendingNotification(t *testing.T) {
 	channel, connRecorder, _ := newTestChannel()
 	channel.Go()
@@ -50,7 +52,7 @@ func TestSendingNotification(t *testing.T) {
 	method := "event:my-event"
 	channel.Notify(method, &testStruct{"Test"})
 
-	connRecorder.WaitWriteCalled(1)
+	connRecorder.WaitUntil(WriteCalledAtLeast(1))
 
 	// check request
 	req, err := connRecorder.GetRequest(0)
@@ -72,6 +74,7 @@ func TestSendingNotification(t *testing.T) {
 	}
 }
 
+// X Request -> X'
 func TestSendingRequest(t *testing.T) {
 	channel, connRecorder, _ := newTestChannel()
 	channel.Go()
@@ -82,7 +85,7 @@ func TestSendingRequest(t *testing.T) {
 		// do nothing
 	})
 
-	connRecorder.WaitWriteCalled(1)
+	connRecorder.WaitUntil(WriteCalledAtLeast(1))
 
 	// check request
 	req, err := connRecorder.GetRequest(0)
@@ -104,6 +107,7 @@ func TestSendingRequest(t *testing.T) {
 	}
 }
 
+// X' Request -> X
 func TestReceivingRequest(t *testing.T) {
 	channel, connRecorder, reqRecorder := newTestChannel()
 	channel.Go()
@@ -116,11 +120,11 @@ func TestReceivingRequest(t *testing.T) {
 		t.Fatal(err)
 	}
 	sentReq := &jsonrpc.Request{
-		ID:        1,
+		ID:        "1",
 		Method:    "domain.doSomething",
 		RawParams: reqBody,
 	}
-	connRecorder.ReadRequest(sentReq)
+	connRecorder.PushNext(sentReq)
 
 	// channel needs some time to call the handler
 	reqRecorder.WaitHandleCalled(1)
@@ -137,6 +141,8 @@ func TestReceivingRequest(t *testing.T) {
 	}
 }
 
+// X' Request  -> X
+// X' <- Response X
 func TestSendingResponseBack(t *testing.T) {
 	channel, connRecorder, reqRecorder := newTestChannel()
 	channel.Go()
@@ -153,7 +159,7 @@ func TestSendingResponseBack(t *testing.T) {
 		Method:    "domain.doSomething",
 		RawParams: reqBody,
 	}
-	connRecorder.ReadRequest(req)
+	connRecorder.PushNext(req)
 
 	// wait for request to arrive
 	reqRecorder.WaitHandleCalled(1)
@@ -164,7 +170,7 @@ func TestSendingResponseBack(t *testing.T) {
 	transmitter.Send(sentBody)
 
 	// wait for response to be written
-	connRecorder.WaitWriteCalled(1)
+	connRecorder.WaitUntil(WriteCalledAtLeast(1))
 
 	resp, err := connRecorder.GetResponse(0)
 	if err != nil {
@@ -184,6 +190,60 @@ func TestSendingResponseBack(t *testing.T) {
 	}
 	if respBody != sentBody {
 		t.Fatalf("Expected to get the same body but got %v != %v", respBody, sentBody)
+	}
+}
+
+// X Request  -> X'
+// X <- Response X'
+func TestRequestResponseHandling(t *testing.T) {
+	channel, connRecorder, reqRecorder := newTestChannel()
+	channel.Go()
+	defer channel.Close()
+	defer reqRecorder.Close()
+
+	respChan := make(chan *jsonrpc.Response, 1)
+
+	// X Request -> X'
+	channel.Request("domain.doSomething", &testStruct{"req-params"}, func(response *jsonrpc.Response, err error) {
+		respChan <- response
+	})
+
+	// wait for the response and catch its id
+	connRecorder.WaitUntil(WriteCalledAtLeast(1))
+	req, err := connRecorder.GetRequest(0)
+	if err != nil {
+		t.Fatal(t)
+	}
+
+	// X' Response -> X
+	repsBody := testStruct{"resp-body"}
+	marshaledBody, err := json.Marshal(&repsBody)
+	if err != nil {
+		t.Fatal(err)
+	}
+	connRecorder.PushNext(&jsonrpc.Response{
+		ID:     req.ID,
+		Result: marshaledBody,
+	})
+
+	// wait for the response handler function to be called
+	select {
+	case resp := <-respChan:
+		if bytes.Compare(resp.Result, marshaledBody) != 0 {
+			t.Fatalf("Received different response body %s != %s", string(resp.Result), string(marshaledBody))
+		}
+	case <-time.After(time.Second * 2):
+		t.Fatal("Didn't receieve the response in 2seconds")
+	}
+}
+
+// WaitPredicate is used to wait on recorder until the condition
+// behind this predicate is met.
+type WaitPredicate func(recorder *NativeConnRecorder) bool
+
+func WriteCalledAtLeast(times int) WaitPredicate {
+	return func(recorder *NativeConnRecorder) bool {
+		return len(recorder.capturedWrites) >= times
 	}
 }
 
@@ -297,24 +357,24 @@ func (ncr *NativeConnRecorder) UnmarshalRequestParams(idx int, v interface{}) er
 	return nil
 }
 
-func (ncr *NativeConnRecorder) WaitWriteCalled(times int) {
+func (ncr *NativeConnRecorder) WaitUntil(p WaitPredicate) {
 	ncr.cond.L.Lock()
-	for !ncr.closed && len(ncr.capturedWrites) < times {
+	for !ncr.closed && !p(ncr) {
 		ncr.cond.Wait()
 	}
 	ncr.cond.L.Unlock()
 }
 
-func (ncr *NativeConnRecorder) ReadRequest(request *jsonrpc.Request) error {
-	data, err := json.Marshal(request)
+func (ncr *NativeConnRecorder) PushNext(v interface{}) error {
+	marshaled, err := json.Marshal(v)
 	if err != nil {
 		return err
 	}
-	ncr.Read(data)
+	ncr.PushNextRaw(marshaled)
 	return nil
 }
 
-func (ncr *NativeConnRecorder) Read(data []byte) {
+func (ncr *NativeConnRecorder) PushNextRaw(data []byte) {
 	ncr.nextChan <- data
 }
 
